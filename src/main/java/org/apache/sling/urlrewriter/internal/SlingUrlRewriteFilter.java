@@ -21,7 +21,6 @@ package org.apache.sling.urlrewriter.internal;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.Dictionary;
 
 import javax.servlet.Filter;
 import javax.servlet.FilterChain;
@@ -35,18 +34,18 @@ import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 
 import org.apache.commons.io.IOUtils;
-import org.apache.felix.scr.annotations.Activate;
-import org.apache.felix.scr.annotations.Component;
-import org.apache.felix.scr.annotations.ConfigurationPolicy;
-import org.apache.felix.scr.annotations.Deactivate;
-import org.apache.felix.scr.annotations.Modified;
-import org.apache.felix.scr.annotations.Properties;
-import org.apache.felix.scr.annotations.Property;
-import org.apache.felix.scr.annotations.Service;
-import org.apache.sling.commons.osgi.PropertiesUtil;
 import org.apache.sling.engine.EngineConstants;
-import org.osgi.framework.Constants;
-import org.osgi.service.component.ComponentContext;
+import org.osgi.service.component.annotations.Activate;
+import org.osgi.service.component.annotations.Component;
+import org.osgi.service.component.annotations.ConfigurationPolicy;
+import org.osgi.service.component.annotations.Deactivate;
+import org.osgi.service.component.annotations.Modified;
+import org.osgi.service.component.propertytypes.ServiceDescription;
+import org.osgi.service.component.propertytypes.ServiceRanking;
+import org.osgi.service.component.propertytypes.ServiceVendor;
+import org.osgi.service.metatype.annotations.AttributeDefinition;
+import org.osgi.service.metatype.annotations.Designate;
+import org.osgi.service.metatype.annotations.ObjectClassDefinition;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.tuckey.web.filters.urlrewrite.Conf;
@@ -57,43 +56,29 @@ import org.w3c.dom.Document;
 import org.xml.sax.helpers.DefaultHandler;
 
 @Component(
-    label = "Apache Sling URL Rewriter",
-    description = "multi-purpose service for altering HTTP requests/responses based on Tuckey's UrlRewriteFilter",
-    immediate = true,
-    metatype = true,
-    policy = ConfigurationPolicy.REQUIRE
-)
-@Service
-@Properties({
-    @Property(
-        name = Constants.SERVICE_VENDOR,
-        value = "The Apache Software Foundation"
-    ),
-    @Property(
-        name = Constants.SERVICE_DESCRIPTION,
-        value = "multi-purpose service for altering HTTP requests/responses based on Tuckey's UrlRewriteFilter"
-    ),
-    @Property(
-        name = Constants.SERVICE_RANKING,
-        intValue = 0,
-        propertyPrivate = false
-    ),
-    @Property(
-        name = EngineConstants.SLING_FILTER_SCOPE,
-        value = {
-            EngineConstants.FILTER_SCOPE_REQUEST,
-            EngineConstants.FILTER_SCOPE_FORWARD
-        }
-    )
-})
+        service = {SlingUrlRewriteFilter.class},
+        immediate = true,
+        configurationPolicy = ConfigurationPolicy.REQUIRE,
+        property = {
+                EngineConstants.SLING_FILTER_SCOPE + "=" + EngineConstants.FILTER_SCOPE_REQUEST,
+                EngineConstants.SLING_FILTER_SCOPE + "=" + EngineConstants.FILTER_SCOPE_FORWARD
+        })
+@ServiceRanking(0)
+@ServiceVendor("The Apache Software Foundation")
+@ServiceDescription("multi-purpose service for altering HTTP requests/responses based on Tuckey's UrlRewriteFilter")
+@Designate(ocd = SlingUrlRewriteFilter.Config.class)
 public final class SlingUrlRewriteFilter implements Filter {
 
     private UrlRewriter rewriter;
 
     public static final String DEFAULT_REWRITE_RULES = "<?xml version=\"1.0\" encoding=\"utf-8\"?><!DOCTYPE urlrewrite PUBLIC \"-//tuckey.org//DTD UrlRewrite 4.0//EN\" \"http://www.tuckey.org/res/dtds/urlrewrite4.0.dtd\"><urlrewrite/>";
 
-    @Property(value = DEFAULT_REWRITE_RULES)
-    public static final String REWRITE_RULES_PARAMETER = "org.apache.sling.urlrewriter.rewrite.rules";
+    @ObjectClassDefinition
+    public @interface Config {
+
+        @AttributeDefinition
+        String org_apache_sling_urlrewriter_rewrite_rules() default DEFAULT_REWRITE_RULES;
+    }
 
     private final Logger logger = LoggerFactory.getLogger(SlingUrlRewriteFilter.class);
 
@@ -102,15 +87,15 @@ public final class SlingUrlRewriteFilter implements Filter {
     }
 
     @Activate
-    private void activate(final ComponentContext context) {
+    private void activate(final Config config) {
         logger.debug("activate");
-        configure(context);
+        configure(config);
     }
 
     @Modified
-    private void modified(final ComponentContext context) {
+    private void modified(final Config config) {
         logger.debug("modified");
-        configure(context);
+        configure(config);
     }
 
     @Deactivate
@@ -119,10 +104,9 @@ public final class SlingUrlRewriteFilter implements Filter {
         clearRewriter();
     }
 
-    private void configure(final ComponentContext context) {
+    private void configure(final Config config) {
         logger.info("configuring URL rewriter");
-        final Dictionary properties = context.getProperties();
-        final String rules = PropertiesUtil.toString(properties.get(REWRITE_RULES_PARAMETER), DEFAULT_REWRITE_RULES);
+        final String rules = config.org_apache_sling_urlrewriter_rewrite_rules();
 
         final Document document = createDocument(rules);
         if (document == null) {
