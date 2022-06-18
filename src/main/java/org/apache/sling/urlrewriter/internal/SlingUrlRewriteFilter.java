@@ -73,7 +73,9 @@ public final class SlingUrlRewriteFilter implements Filter {
 
     public static final String DEFAULT_REWRITE_RULES = "<?xml version=\"1.0\" encoding=\"utf-8\"?><!DOCTYPE urlrewrite PUBLIC \"-//tuckey.org//DTD UrlRewrite 4.0//EN\" \"http://www.tuckey.org/res/dtds/urlrewrite4.0.dtd\"><urlrewrite/>";
 
-    @ObjectClassDefinition
+    @ObjectClassDefinition( localization = "OSGI-INF/l10n/metatype",
+            name = "Apache Sling URL Rewriter",
+            description = "multi-purpose service for altering HTTP requests/responses based on Tuckey's UrlRewriteFilter")
     public @interface Config {
 
         @AttributeDefinition
